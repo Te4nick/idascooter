@@ -1,17 +1,13 @@
 from rest_framework import serializers
 from rest_enumfield import EnumField
 
-from .models import FlightStatus
+from .models import ScooterStatus
 
 
-class InFlightSerializer(serializers.Serializer):
-    departure_location = serializers.CharField(max_length=50)
-    arrival_location = serializers.CharField(max_length=50)
-    max_capacity = serializers.IntegerField(min_value=1, default=50)
-
-
-class FlightIDSerializer(serializers.Serializer):
-    flight_id = serializers.IntegerField(min_value=0, required=True)
+class ScooterSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=True)
+    status = EnumField(choices=ScooterStatus, required=True)
+    passenger_id = serializers.UUIDField(required=True)
 
 
 class InPassengerSerializer(serializers.Serializer):
@@ -20,15 +16,20 @@ class InPassengerSerializer(serializers.Serializer):
 
 
 class PassengerIDSerializer(serializers.Serializer):
-    passenger_id = serializers.IntegerField(min_value=0, required=True)
+    passenger_id = serializers.UUIDField(required=True)
 
 
-class BuyTicketQuerySerializer(FlightIDSerializer, PassengerIDSerializer):
-    pass
+class ScooterIDSerializer(serializers.Serializer):
+    scooter_id = serializers.UUIDField(required=True)
 
 
-class ChangeFlightStatusSerializer(FlightIDSerializer):
-    status = EnumField(choices=FlightStatus, required=True)
+class OccupyScooterSerializer(serializers.Serializer):
+    scooter_id = serializers.UUIDField(required=True)
+    passenger_id = serializers.UUIDField(required=True)
+
+
+class ScooterStatusSerializer(serializers.Serializer):
+    status = EnumField(choices=ScooterStatus, required=True)
 
 
 class ValidationErrorSerializer(serializers.Serializer):
@@ -37,6 +38,11 @@ class ValidationErrorSerializer(serializers.Serializer):
             child=serializers.CharField()
         )
     )
+
+
+class PaginationSerializer(serializers.Serializer):
+    limit = serializers.IntegerField(min_value=1, default=10, max_value=50)
+    offset = serializers.IntegerField(min_value=0, default=0)
 
 
 class OperationSerializer(serializers.Serializer):

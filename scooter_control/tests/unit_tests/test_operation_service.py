@@ -1,8 +1,8 @@
 from uuid import uuid4
 from django.test import TestCase
 
-from flight.models import Operation
-from flight.services import OperationService
+from scooter_control.models import Operation
+from scooter_control.services import OperationService
 
 
 class TestOperationService(TestCase):

@@ -1,7 +1,9 @@
+from uuid import uuid4
+
 from django.test import TestCase
 
-from flight.models import Passenger
-from flight.services import PassengerService
+from scooter_control.models import Passenger
+from scooter_control.services import PassengerService
 
 
 class PassengerServiceTest(TestCase):
@@ -14,9 +16,10 @@ class PassengerServiceTest(TestCase):
         self.assertEqual(self.service.passengers[added_passenger_id].name, passenger.name)
         self.assertEqual(self.service.passengers[added_passenger_id].surname, passenger.surname)
 
-    def test_get_student_success(self):
+    def test_get_passenger_success(self):
         passenger = Passenger(name='Water', surname='Rock')
-        self.service.passengers.append(passenger)
-        self.assertEqual(passenger, self.service.get_passenger(0))
+        passenger_id = uuid4()
+        self.service.passengers[passenger_id] = passenger
+        self.assertEqual(passenger, self.service.get_passenger(passenger_id))
 
 

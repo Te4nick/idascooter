@@ -6,15 +6,21 @@
   ```
 - cd to cloned project:
   ```bash
-  cd space_flight_control_system
+  cd idascooter
   ```
 - Set up virtual environment:
   ```bash
   python -m venv .venv
   ```
 - Activate virtual environment:
+  
+  Unix:
   ```bash
-  .\venv\Scripts\activate
+  ./.venv/Scripts/activate
+  ```
+  Windows:
+  ```powershell
+  .\.venv\Scripts\Activate.ps1
   ```
 - Install project:
   ```bash
@@ -30,9 +36,9 @@
   ```
 - Run unit tests:
   ```bash
-  python manage.py test flight/tests/unit_tests
+  python manage.py test scooter_control/tests/unit_tests
   ```
 - Run component tests:
   ```bash
-  python manage.py test flight/tests/component_tests
+  python manage.py test scooter_control/tests/component_tests
   ```

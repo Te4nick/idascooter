@@ -4,87 +4,35 @@ from uuid import uuid4
 from rest_framework import status
 from rest_framework.test import APITestCase, APIRequestFactory
 
-from flight.models import FlightStatus
-from flight.views import FlightViewSet
+from scooter_control.models import ScooterStatus
+from scooter_control.views import ScooterViewSet
 
 
-class SpaceFlightControlSystemTests(APITestCase):
+class ScooterControlSystemTests(APITestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
 
-    def post_valid_flight(
-            self,
-            departure_location: str = 'Earth',
-            arrival_location: str = 'Mars',
-            max_capacity: int = 50
-    ):
-        request = self.factory.post(
-            '/api/v1/flight/',
-            {
-                'departure_location': departure_location,
-                'arrival_location': arrival_location,
-                'max_capacity': max_capacity,
-            },
+    def get_valid_scooter(self):
+        request = self.factory.get(
+            '/api/v1/scooter/',
         )
-        return FlightViewSet.as_view({'post': 'post_flight'})(request)
+        return ScooterViewSet.as_view({'get': 'get_scooter'})(request)
 
     def post_valid_passenger(self):
         request = self.factory.post(
             '/api/v1/passenger/',
             {
-                'name': 'Elon',
-                'surname': 'Musk',
+                'name': 'Dmitriy',
+                'surname': 'Nagiev',
             },
         )
-        return FlightViewSet.as_view({'post': 'post_passenger'})(request)
+        return ScooterViewSet.as_view({'post': 'post_passenger'})(request)
 
-    def test_post_flight_valid(self):
-        response = self.post_valid_flight()
+    def test_get_scooter_valid(self):
+        response = self.get_valid_scooter()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_post_flight_validation_error(self):
-        request = self.factory.post(
-            '/api/v1/flight/',
-            {
-                'i am': 'error',
-            },
-        )
-        response = FlightViewSet.as_view({'post': 'post_flight'})(request)
-        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
-
-    def test_post_flight_status_success(self):
-        self.post_valid_flight()
-        request = self.factory.post(
-            '/api/v1/flight/status',
-            {
-                'flight_id': 0,
-                'status': FlightStatus.ARRIVED.value,
-            },
-        )
-        response = FlightViewSet.as_view({'post': 'post_flight_status'})(request)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_post_flight_status_validation_error(self):
-        self.post_valid_flight()
-        request = self.factory.post(
-            '/api/v1/flight/status',
-            {
-                'i am': 'error',
-            },
-        )
-        response = FlightViewSet.as_view({'post': 'post_flight_status'})(request)
-        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
-
-    def test_post_flight_status_not_found(self):
-        request = self.factory.post(
-            '/api/v1/flight/status',
-            {
-                'flight_id': 1_000_000,
-                'status': FlightStatus.ARRIVED.value,
-            },
-        )
-        response = FlightViewSet.as_view({'post': 'post_flight_status'})(request)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['status'], ScooterStatus.VACANT.name)
+        self.assertEqual(response.data['passenger_id'], None)
 
     def test_post_passenger_valid(self):
         response = self.post_valid_passenger()
@@ -97,100 +45,174 @@ class SpaceFlightControlSystemTests(APITestCase):
                 'i am': 'error',
             },
         )
-        response = FlightViewSet.as_view({'post': 'post_passenger'})(request)
+        response = ScooterViewSet.as_view({'post': 'post_passenger'})(request)
         self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-    def test_get_ticket_valid(self):
-        flight = self.post_valid_flight()
-        passenger = self.post_valid_passenger()
-        request = self.factory.get(
-            f'/api/v1/ticket/?flight_id={flight.data["flight_id"]}&passenger_id={passenger.data["passenger_id"]}'
-        )
-        response = FlightViewSet.as_view({'get': 'get_ticket'})(request)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_post_occupy_scooter_valid(self):
+        passenger_id = self.post_valid_passenger().data['passenger_id']
+        scooter_data = self.get_valid_scooter().data
 
-    def test_get_ticket_flight_not_found(self):
-        flight_id = 1_000_000
-        passenger = self.post_valid_passenger()
-        request = self.factory.get(
-            f'/api/v1/ticket/?flight_id={flight_id}&passenger_id={passenger.data["passenger_id"]}'
-        )
-        response = FlightViewSet.as_view({'get': 'get_ticket'})(request)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_get_ticket_passenger_not_found(self):
-        flight = self.post_valid_flight()
-        passenger_id = 1_000_000
-        request = self.factory.get(
-            f'/api/v1/ticket/?flight_id={flight.data["flight_id"]}&passenger_id={passenger_id}'
-        )
-        response = FlightViewSet.as_view({'get': 'get_ticket'})(request)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_get_ticket_flight_full(self):
-        flight = self.post_valid_flight(max_capacity=1)
-        passenger_id1 = self.post_valid_passenger().data["passenger_id"]
-        passenger_id2 = self.post_valid_passenger().data["passenger_id"]
-        request = self.factory.get(
-            f'/api/v1/ticket/?flight_id={flight.data["flight_id"]}&passenger_id={passenger_id1}'
-        )
-        response = FlightViewSet.as_view({'get': 'get_ticket'})(request)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        request = self.factory.get(
-            f'/api/v1/ticket/?flight_id={flight.data["flight_id"]}&passenger_id={passenger_id2}'
-        )
-        response = FlightViewSet.as_view({'get': 'get_ticket'})(request)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_get_ticket_validation_error(self):
-        request = self.factory.get(
-            f'/api/v1/ticket/'
-        )
-        response = FlightViewSet.as_view({'get': 'get_ticket'})(request)
-        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
-
-    def test_get_delayed_valid(self):
-        flight_id = self.post_valid_flight().data["flight_id"]
         request = self.factory.post(
-            '/api/v1/flight/status',
+            f'/api/v1/scooter/occupy',
             {
-                'flight_id': flight_id,
-                'status': FlightStatus.DELAYED.value,
+                'scooter_id': scooter_data['id'],
+                'passenger_id': passenger_id,
+            }
+        )
+        response = ScooterViewSet.as_view({'post': 'post_occupy_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_post_occupy_scooter_not_found(self):
+        request = self.factory.post(
+            f'/api/v1/scooter/occupy',
+            {
+                'scooter_id': uuid4(),
+                'passenger_id': uuid4(),
+            }
+        )
+        response = ScooterViewSet.as_view({'post': 'post_occupy_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_post_occupy_scooter_validation_error(self):
+        request = self.factory.post(
+            '/api/v1/scooter/occupy',
+            {
+                'i am': 'error',
             },
         )
-        FlightViewSet.as_view({'post': 'post_flight_status'})(request)
-        request = self.factory.get(
-            f'/api/v1/delayed/?flight_id={flight_id}'
-        )
-        response = FlightViewSet.as_view({'get': 'get_delayed'})(request)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_get_delayed_validation_error(self):
-        request = self.factory.get(
-            f'/api/v1/delayed/'
-        )
-        response = FlightViewSet.as_view({'get': 'get_ticket'})(request)
+        response = ScooterViewSet.as_view({'post': 'post_occupy_scooter'})(request)
         self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-    def test_get_delayed_not_delayed(self):
-        flight_id = self.post_valid_flight().data["flight_id"]
-        request = self.factory.get(
-            f'/api/v1/delayed/?flight_id={flight_id}'
-        )
-        response = FlightViewSet.as_view({'get': 'get_delayed'})(request)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    def test_post_vacant_scooter_valid(self):
+        scooter_data = self.get_valid_scooter().data
 
-    def test_get_delayed_flight_not_found(self):
-        flight_id = 1_000_000
-        request = self.factory.get(
-            f'/api/v1/delayed/?flight_id={flight_id}'
+        request = self.factory.post(
+            f'/api/v1/scooter/vacant',
+            {
+                'scooter_id': scooter_data['id'],
+            }
         )
-        response = FlightViewSet.as_view({'get': 'get_delayed'})(request)
+        response = ScooterViewSet.as_view({'post': 'post_vacant_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_post_vacant_scooter_not_found(self):
+        request = self.factory.post(
+            f'/api/v1/scooter/vacant',
+            {
+                'scooter_id': uuid4(),
+            }
+        )
+        response = ScooterViewSet.as_view({'post': 'post_vacant_scooter'})(request)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-    
+
+    def test_post_vacant_scooter_validation_error(self):
+        request = self.factory.post(
+            '/api/v1/scooter/vacant',
+            {
+                'i am': 'error',
+            },
+        )
+        response = ScooterViewSet.as_view({'post': 'post_vacant_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    def test_post_broken_scooter_valid(self):
+        scooter_data = self.get_valid_scooter().data
+
+        request = self.factory.post(
+            f'/api/v1/scooter/broken',
+            {
+                'scooter_id': scooter_data['id'],
+            }
+        )
+        response = ScooterViewSet.as_view({'post': 'post_broken_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_post_broken_scooter_not_found(self):
+        request = self.factory.post(
+            f'/api/v1/scooter/broken',
+            {
+                'scooter_id': uuid4(),
+            }
+        )
+        response = ScooterViewSet.as_view({'post': 'post_broken_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_post_broken_scooter_validation_error(self):
+        request = self.factory.post(
+            '/api/v1/scooter/broken',
+            {
+                'i am': 'error',
+            },
+        )
+        response = ScooterViewSet.as_view({'post': 'post_broken_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    def test_get_scooters_list_valid(self):
+        request = self.factory.get(
+            '/api/v1/scooter/all',
+        )
+        response = ScooterViewSet.as_view({'get': 'get_scooters_list'})(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_get_scooters_list_validation_error(self):
+        request = self.factory.get(
+            '/api/v1/scooter/all?limit=unlimited',
+        )
+        response = ScooterViewSet.as_view({'get': 'get_scooters_list'})(request)
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    def test_get_scooter_broken_valid(self):
+        scooter_data = self.get_valid_scooter().data
+        desired_data = {
+            'id': scooter_data['id'],
+            'status': ScooterStatus.BROKEN.name,
+            'passenger_id': scooter_data['passenger_id'],
+        }
+
+        request = self.factory.post(
+            f'/api/v1/scooter/broken',
+            {
+                'scooter_id': scooter_data['id'],
+            }
+        )
+        response = ScooterViewSet.as_view({'post': 'post_broken_scooter'})(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        request = self.factory.get(
+            f'/api/v1/scooter/broken?scooter_id={scooter_data['id']}',
+        )
+        response = ScooterViewSet.as_view({'get': 'get_scooter_broken'})(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, desired_data)
+
+    def test_get_scooter_broken_no_content(self):
+        scooter_data = self.get_valid_scooter().data
+
+        request = self.factory.get(
+            f'/api/v1/scooter/broken?scooter_id={scooter_data['id']}',
+        )
+        response = ScooterViewSet.as_view({'get': 'get_scooter_broken'})(request)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.data, None)
+
+    def test_get_scooter_broken_not_found(self):
+        request = self.factory.get(
+            f'/api/v1/scooter/broken?scooter_id={uuid4()}',
+        )
+        response = ScooterViewSet.as_view({'get': 'get_scooter_broken'})(request)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data, None)
+
+    def test_get_scooter_broken_validation_error(self):
+        request = self.factory.get(
+            f'/api/v1/scooter/broken?scooter_id=i_am_error',
+        )
+        response = ScooterViewSet.as_view({'get': 'get_scooter_broken'})(request)
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
+
     def test_get_log_file_success(self):
         request = self.factory.get("/api/v1/log")
-        response = FlightViewSet.as_view({"get": "get_log_file"})(request)
+        response = ScooterViewSet.as_view({"get": "get_log_file"})(request)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["done"], False)
@@ -206,13 +228,13 @@ class SpaceFlightControlSystemTests(APITestCase):
         }
 
         request = self.factory.get("/api/v1/log")
-        response = FlightViewSet.as_view({"get": "get_log_file"})(request)
+        response = ScooterViewSet.as_view({"get": "get_log_file"})(request)
         desired_response_data["id"] = response.data['id']
 
         time.sleep(1)
 
         request = self.factory.get(f"/api/v1/log/status?id={response.data['id']}")
-        response = FlightViewSet.as_view({"get": "get_log_file_status"})(request)
+        response = ScooterViewSet.as_view({"get": "get_log_file_status"})(request)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, desired_response_data)
@@ -227,7 +249,7 @@ class SpaceFlightControlSystemTests(APITestCase):
         }
 
         request = self.factory.get("/api/v1/log/status?cannot=validate")
-        response = FlightViewSet.as_view({"get": "get_log_file_status"})(request)
+        response = ScooterViewSet.as_view({"get": "get_log_file_status"})(request)
 
         self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
         self.assertEqual(response.data, desired_response_data)
@@ -236,6 +258,6 @@ class SpaceFlightControlSystemTests(APITestCase):
         op_id = uuid4()
 
         request = self.factory.get(f"/api/v1/log/status?id={op_id}")
-        response = FlightViewSet.as_view({"get": "get_log_file_status"})(request)
+        response = ScooterViewSet.as_view({"get": "get_log_file_status"})(request)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

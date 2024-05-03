@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.test import TestCase
 
-from flight.models import Passenger
-from flight.services import LogService
+from scooter_control.models import Passenger
+from scooter_control.services import LogService
 
 
 class LogServiceTest(TestCase):
