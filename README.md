@@ -1,4 +1,4 @@
-# Space Flight Control System
+# Scooter Control System
 ## Development
 - Clone repo:
   ```bash
